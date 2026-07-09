@@ -1,0 +1,976 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>抖音台风热搜监控面板</title>
+<style>
+  :root {
+    --bg-primary: #0a0e1a;
+    --bg-card: #111827;
+    --bg-card-hover: #1a2236;
+    --accent: #ef4444;
+    --accent-warm: #f97316;
+    --accent-cold: #3b82f6;
+    --text-primary: #f1f5f9;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
+    --border: #1e293b;
+    --success: #22c55e;
+    --warning: #eab308;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  .header {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .logo {
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-warm));
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+  }
+
+  .header-title {
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+  }
+
+  .header-title span {
+    color: var(--accent);
+  }
+
+  .status-bar {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .status-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--success);
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  .countdown {
+    background: var(--bg-card);
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent-warm);
+    border: 1px solid var(--border);
+  }
+
+  .main-container {
+    padding: 20px 24px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .stat-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px;
+    transition: all 0.3s ease;
+  }
+
+  .stat-card:hover {
+    background: var(--bg-card-hover);
+    transform: translateY(-2px);
+  }
+
+  .stat-label {
+    font-size: 12px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+  }
+
+  .stat-value {
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+  }
+
+  .stat-change {
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .stat-change.up { color: var(--success); }
+  .stat-change.down { color: var(--accent); }
+
+  .topics-section {
+    margin-bottom: 24px;
+  }
+
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+
+  .section-title {
+    font-size: 16px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .section-title .icon {
+    width: 32px;
+    height: 32px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-warm));
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+  }
+
+  .refresh-btn {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s;
+  }
+
+  .refresh-btn:hover {
+    background: var(--bg-card-hover);
+    color: var(--text-primary);
+  }
+
+  .refresh-btn.spinning .refresh-icon {
+    animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  .topic-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    margin-bottom: 16px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+  }
+
+  .topic-card:hover {
+    border-color: var(--accent-warm);
+  }
+
+  .topic-card.expanded {
+    border-color: var(--accent);
+  }
+
+  .topic-header {
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+
+  .topic-header:hover {
+    background: var(--bg-card-hover);
+  }
+
+  .topic-rank {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+
+  .topic-rank.hot {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+  }
+
+  .topic-rank.warm {
+    background: linear-gradient(135deg, #f97316, #ea580c);
+  }
+
+  .topic-rank.normal {
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+  }
+
+  .topic-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .topic-title {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .topic-meta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  .hot-value {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--accent-warm);
+    font-weight: 600;
+  }
+
+  .topic-arrow {
+    font-size: 18px;
+    color: var(--text-muted);
+    transition: transform 0.3s;
+  }
+
+  .topic-card.expanded .topic-arrow {
+    transform: rotate(180deg);
+  }
+
+  .videos-container {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.5s ease;
+  }
+
+  .topic-card.expanded .videos-container {
+    max-height: 2000px;
+  }
+
+  .videos-list {
+    padding: 0 20px 20px;
+  }
+
+  .video-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+    transition: all 0.2s;
+  }
+
+  .video-item:last-child {
+    border-bottom: none;
+  }
+
+  .video-item:hover {
+    padding-left: 8px;
+  }
+
+  .video-rank {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    background: var(--bg-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-muted);
+    flex-shrink: 0;
+  }
+
+  .video-rank.top3 {
+    background: linear-gradient(135deg, #fbbf24, #f59e0b);
+    color: #1a1a2e;
+  }
+
+  .video-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .video-author {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent-cold);
+    margin-bottom: 2px;
+  }
+
+  .video-title {
+    font-size: 13px;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .video-stats {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-shrink: 0;
+  }
+
+  .video-stat {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  .video-stat .num {
+    font-weight: 600;
+    color: var(--text-secondary);
+  }
+
+  .log-section {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 16px 20px;
+  }
+
+  .log-title {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 12px;
+    color: var(--text-secondary);
+  }
+
+  .log-content {
+    font-family: 'SF Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+    line-height: 1.8;
+    max-height: 120px;
+    overflow-y: auto;
+  }
+
+  .log-entry {
+    display: flex;
+    gap: 8px;
+  }
+
+  .log-time {
+    color: var(--accent-warm);
+    flex-shrink: 0;
+  }
+
+  .log-msg.success { color: var(--success); }
+  .log-msg.info { color: var(--accent-cold); }
+  .log-msg.warn { color: var(--warning); }
+  .log-msg.error { color: var(--accent); }
+
+  .config-panel {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 24px;
+  }
+
+  .config-title {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 16px;
+    color: var(--text-secondary);
+  }
+
+  .config-row {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 12px;
+    align-items: center;
+  }
+
+  .config-row label {
+    font-size: 13px;
+    color: var(--text-muted);
+    width: 100px;
+    flex-shrink: 0;
+  }
+
+  .config-row input {
+    flex: 1;
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 12px;
+    color: var(--text-primary);
+    font-size: 13px;
+    outline: none;
+  }
+
+  .config-row input:focus {
+    border-color: var(--accent-cold);
+  }
+
+  .save-config-btn {
+    background: linear-gradient(135deg, var(--accent), var(--accent-warm));
+    border: none;
+    color: white;
+    padding: 10px 24px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s;
+  }
+
+  .save-config-btn:hover {
+    opacity: 0.9;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-muted);
+  }
+
+  .empty-state .icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+  }
+
+  .empty-state p {
+    font-size: 14px;
+  }
+
+  @media (max-width: 768px) {
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    .header { flex-wrap: wrap; gap: 10px; }
+    .status-bar { width: 100%; justify-content: space-between; }
+    .video-stats { flex-wrap: wrap; gap: 8px; }
+    .config-row { flex-direction: column; align-items: stretch; }
+    .config-row label { width: auto; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <div class="logo">🌀</div>
+    <div class="header-title">抖音<span>台风</span>热搜监控</div>
+  </div>
+  <div class="status-bar">
+    <div class="status-item">
+      <div class="status-dot"></div>
+      <span>监控中</span>
+    </div>
+    <div class="status-item">
+      <span>下次刷新:</span>
+      <span class="countdown" id="countdown">60s</span>
+    </div>
+    <div class="status-item">
+      <span>关键词:</span>
+      <span style="color: var(--accent); font-weight: 600;">台风</span>
+    </div>
+  </div>
+</div>
+
+<div class="main-container">
+  <!-- API配置 -->
+  <div class="config-panel" id="configPanel">
+    <div class="config-title">🔧 API 配置（首次使用请填写）</div>
+    <div class="config-row">
+      <label>API Token:</label>
+      <input type="text" id="apiToken" placeholder="请输入起零数据 API Token">
+    </div>
+    <div class="config-row">
+      <label>关键词:</label>
+      <input type="text" id="keyword" placeholder="默认: 台风" value="台风">
+    </div>
+    <div class="config-row">
+      <label></label>
+      <button class="save-config-btn" onclick="saveConfig()">保存并启动监控</button>
+    </div>
+  </div>
+
+  <!-- 统计卡片 -->
+  <div class="stats-grid" id="statsGrid">
+    <div class="stat-card">
+      <div class="stat-label">热搜话题数</div>
+      <div class="stat-value" id="topicCount">-</div>
+      <div class="stat-change up"><span>↑</span> 等待数据</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">总热度值</div>
+      <div class="stat-value" id="totalHot">-</div>
+      <div class="stat-change up"><span>↑</span> 等待数据</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">视频总数</div>
+      <div class="stat-value" id="videoCount">-</div>
+      <div class="stat-change up"><span>↑</span> 等待数据</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">最高点赞</div>
+      <div class="stat-value" id="maxLikes">-</div>
+      <div class="stat-change up"><span>↑</span> 等待数据</div>
+    </div>
+  </div>
+
+  <!-- 热搜话题 -->
+  <div class="topics-section">
+    <div class="section-header">
+      <div class="section-title">
+        <div class="icon">🔥</div>
+        台风相关热搜话题
+      </div>
+      <button class="refresh-btn" id="refreshBtn" onclick="manualRefresh()">
+        <span class="refresh-icon">🔄</span>
+        <span>立即刷新</span>
+      </button>
+    </div>
+
+    <div id="topicsContainer">
+      <div class="empty-state">
+        <div class="icon">📊</div>
+        <p>请在上方配置API Token后启动监控</p>
+        <p style="font-size: 12px; margin-top: 8px; color: var(--text-muted);">数据将每60秒自动刷新</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 日志 -->
+  <div class="log-section">
+    <div class="log-title">📋 运行日志</div>
+    <div class="log-content" id="logContent"></div>
+  </div>
+</div>
+
+<script>
+// ==================== 配置管理 ====================
+let config = {
+  apiToken: '',
+  keyword: '台风',
+  apiBase: 'https://api.istero.com/resource/v1'
+};
+
+let isMonitoring = false;
+let countdown = 60;
+let countdownTimer = null;
+
+// ==================== 日志系统 ====================
+const logs = [];
+function addLog(msg, type = 'info') {
+  const now = new Date();
+  const time = now.toLocaleTimeString('zh-CN', { hour12: false });
+  logs.unshift({ time, msg, type });
+  if (logs.length > 50) logs.pop();
+  renderLogs();
+}
+
+function renderLogs() {
+  const container = document.getElementById('logContent');
+  container.innerHTML = logs.map(log => `
+    <div class="log-entry">
+      <span class="log-time">[${log.time}]</span>
+      <span class="log-msg ${log.type}">${log.msg}</span>
+    </div>
+  `).join('');
+}
+
+// ==================== 数据格式化 ====================
+function formatNumber(num) {
+  if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+  if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+  return num.toString();
+}
+
+function formatHot(num) {
+  if (num >= 100000000) return (num / 100000000).toFixed(1) + '亿';
+  if (num >= 10000) return (num / 10000).toFixed(1) + '万';
+  return num.toString();
+}
+
+// ==================== 模拟数据（演示用）====================
+const demoData = {
+  "fetch_time": "2026-07-09 16:47:00",
+  "keyword": "台风",
+  "topics": [
+    {
+      "topic_rank": 1,
+      "topic_title": "台风艾云尼登陆广东",
+      "topic_hot_value": 18500000,
+      "videos": [
+        {"author": "广东天气", "title": "台风实时路径更新！广东多地发布红色预警", "likes": 452000, "comments": 32000, "shares": 15000},
+        {"author": "央视新闻", "title": "台风艾云尼最新动态，沿海居民请注意", "likes": 380000, "comments": 28000, "shares": 12000},
+        {"author": "中国气象爱好者", "title": "深度解析：今年首个台风为何这么强", "likes": 210000, "comments": 15000, "shares": 8900},
+        {"author": "深圳发布", "title": "深圳全市停工停课通知", "likes": 185000, "comments": 42000, "shares": 56000},
+        {"author": "台风追踪", "title": "卫星云图看台风艾云尼结构", "likes": 156000, "comments": 8900, "shares": 6700},
+        {"author": "应急管理部", "title": "台风避险指南，请转发给家人", "likes": 142000, "comments": 12000, "shares": 45000},
+        {"author": "广东消防", "title": "台风天救援现场实录", "likes": 128000, "comments": 9500, "shares": 3400},
+        {"author": "气象科普君", "title": "3分钟看懂台风形成原理", "likes": 98000, "comments": 6700, "shares": 12000},
+        {"author": "珠海特区报", "title": "珠海港珠澳大桥封桥实况", "likes": 87000, "comments": 11000, "shares": 8900},
+        {"author": "追风少年", "title": "我在台风眼里拍到的画面", "likes": 76000, "comments": 5400, "shares": 2300}
+      ]
+    },
+    {
+      "topic_rank": 3,
+      "topic_title": "台风天注意安全",
+      "topic_hot_value": 8200000,
+      "videos": [
+        {"author": "安全科普", "title": "台风天窗户贴胶带真的有用吗", "likes": 320000, "comments": 45000, "shares": 28000},
+        {"author": "生活小妙招", "title": "台风来临前必做的5件事", "likes": 280000, "comments": 32000, "shares": 19000},
+        {"author": "家庭医生", "title": "台风天受伤急救指南", "likes": 195000, "comments": 18000, "shares": 12000},
+        {"author": "物业管家", "title": "小区防台风检查清单", "likes": 145000, "comments": 8900, "shares": 6700},
+        {"author": "汽车知识", "title": "台风天停车避坑指南", "likes": 132000, "comments": 15000, "shares": 8900},
+        {"author": "装修达人", "title": "台风过后房屋检查要点", "likes": 98000, "comments": 6700, "shares": 4500},
+        {"author": "宠物医生", "title": "台风天宠物安置攻略", "likes": 87000, "comments": 12000, "shares": 5600},
+        {"author": "美食博主", "title": "台风天囤粮清单，这些必买", "likes": 76000, "comments": 9500, "shares": 3400},
+        {"author": "户外探险", "title": "台风天千万别去这些地方", "likes": 65000, "comments": 7800, "shares": 12000},
+        {"author": "心理疗愈", "title": "台风天焦虑怎么办？心理专家支招", "likes": 54000, "comments": 8900, "shares": 2300}
+      ]
+    },
+    {
+      "topic_rank": 7,
+      "topic_title": "台风路径实时追踪",
+      "topic_hot_value": 5600000,
+      "videos": [
+        {"author": "气象卫星", "title": "卫星视角看台风艾云尼移动全过程", "likes": 210000, "comments": 15000, "shares": 8900},
+        {"author": "地图君", "title": "台风路径预测模型解读", "likes": 165000, "comments": 12000, "shares": 6700},
+        {"author": "航海日志", "title": "海上船只如何应对台风", "likes": 132000, "comments": 9500, "shares": 4500},
+        {"author": "无人机航拍", "title": "航拍台风登陆瞬间", "likes": 118000, "comments": 8900, "shares": 12000},
+        {"author": "数据可视化", "title": "历年台风数据大盘点", "likes": 98000, "comments": 6700, "shares": 3400},
+        {"author": "地理科普", "title": "为什么台风总在夏天来", "likes": 87000, "comments": 5400, "shares": 2300},
+        {"author": "渔民生活", "title": "台风前渔民紧急回港实录", "likes": 76000, "comments": 7800, "shares": 4500},
+        {"author": "旅行博主", "title": "台风天航班取消怎么办", "likes": 65000, "comments": 8900, "shares": 1200},
+        {"author": "科技前沿", "title": "AI预测台风准确率有多高", "likes": 54000, "comments": 4500, "shares": 2300},
+        {"author": "历史回顾", "title": "近十年最强台风盘点", "likes": 43000, "comments": 3200, "shares": 1800}
+      ]
+    }
+  ]
+};
+
+// ==================== 数据获取（真实API）====================
+async function fetchHotlist() {
+  try {
+    const response = await fetch(`${config.apiBase}/douyin/top`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${config.apiToken}`
+      },
+      body: JSON.stringify({ token: config.apiToken })
+    });
+
+    const data = await response.json();
+    if (data.code === 200) {
+      return data.data || [];
+    } else {
+      throw new Error(data.message || 'API返回错误');
+    }
+  } catch (e) {
+    addLog(`获取热搜失败: ${e.message}`, 'error');
+    return [];
+  }
+}
+
+async function fetchVideos(topicTitle, limit = 10) {
+  try {
+    const response = await fetch(`${config.apiBase}/douyin/search`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${config.apiToken}`
+      },
+      body: JSON.stringify({
+        token: config.apiToken,
+        keyword: topicTitle,
+        limit: limit
+      })
+    });
+
+    const data = await response.json();
+    if (data.code === 200) {
+      const videos = [];
+      for (const v of (data.data || []).slice(0, limit)) {
+        videos.push({
+          author: v.author?.nickname || '未知作者',
+          title: v.desc || '无标题',
+          likes: v.statistics?.digg_count || 0,
+          comments: v.statistics?.comment_count || 0,
+          shares: v.statistics?.share_count || 0
+        });
+      }
+      return videos;
+    }
+    return [];
+  } catch (e) {
+    addLog(`获取视频失败: ${e.message}`, 'error');
+    return [];
+  }
+}
+
+function filterTopics(hotlist) {
+  return hotlist.filter(item => (item.title || '').includes(config.keyword));
+}
+
+async function processData() {
+  addLog('开始抓取数据...', 'info');
+
+  try {
+    const hotlist = await fetchHotlist();
+    const typhoonTopics = filterTopics(hotlist);
+
+    addLog(`获取到 ${hotlist.length} 条热搜，筛选出 ${typhoonTopics.length} 个台风相关话题`, 'info');
+
+    const topics = [];
+    for (const topic of typhoonTopics) {
+      addLog(`正在获取 [${topic.title}] 的视频...`, 'info');
+      const videos = await fetchVideos(topic.title, 10);
+      topics.push({
+        topic_rank: topic.rank,
+        topic_title: topic.title,
+        topic_hot_value: topic.hot_value || topic.hot || 0,
+        videos: videos
+      });
+      await sleep(1000);
+    }
+
+    const result = {
+      fetch_time: new Date().toLocaleString('zh-CN'),
+      keyword: config.keyword,
+      topics: topics
+    };
+
+    renderData(result);
+    addLog(`数据刷新完成！共 ${topics.length} 个话题，${topics.reduce((a, t) => a + t.videos.length, 0)} 条视频`, 'success');
+
+  } catch (e) {
+    addLog(`处理数据失败: ${e.message}`, 'error');
+  }
+}
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// ==================== 渲染 ====================
+function renderData(data) {
+  const totalTopics = data.topics.length;
+  const totalHot = data.topics.reduce((a, t) => a + (t.topic_hot_value || 0), 0);
+  const totalVideos = data.topics.reduce((a, t) => a + t.videos.length, 0);
+  const maxLikes = Math.max(...data.topics.flatMap(t => t.videos.map(v => v.likes)), 0);
+
+  document.getElementById('topicCount').textContent = totalTopics;
+  document.getElementById('totalHot').textContent = formatHot(totalHot);
+  document.getElementById('videoCount').textContent = totalVideos;
+  document.getElementById('maxLikes').textContent = formatNumber(maxLikes);
+
+  const container = document.getElementById('topicsContainer');
+  if (data.topics.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <div class="icon">🔍</div>
+        <p>未找到「${config.keyword}」相关热搜话题</p>
+        <p style="font-size: 12px; margin-top: 8px; color: var(--text-muted);">60秒后将自动重试</p>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = '';
+  data.topics.forEach((topic, index) => {
+    const rankClass = topic.topic_rank <= 3 ? 'hot' : topic.topic_rank <= 6 ? 'warm' : 'normal';
+
+    const card = document.createElement('div');
+    card.className = 'topic-card';
+    card.id = `topic-${index}`;
+
+    card.innerHTML = `
+      <div class="topic-header" onclick="toggleTopic(${index})">
+        <div class="topic-rank ${rankClass}">${topic.topic_rank}</div>
+        <div class="topic-info">
+          <div class="topic-title">${topic.topic_title}</div>
+          <div class="topic-meta">
+            <span class="hot-value">🔥 ${formatHot(topic.topic_hot_value)}</span>
+            <span>共 ${topic.videos.length} 个视频</span>
+          </div>
+        </div>
+        <div class="topic-arrow">▼</div>
+      </div>
+      <div class="videos-container">
+        <div class="videos-list">
+          ${topic.videos.map((video, vIndex) => `
+            <div class="video-item">
+              <div class="video-rank ${vIndex < 3 ? 'top3' : ''}">${vIndex + 1}</div>
+              <div class="video-info">
+                <div class="video-author">@${video.author}</div>
+                <div class="video-title">${video.title}</div>
+              </div>
+              <div class="video-stats">
+                <div class="video-stat">
+                  <span>👍</span>
+                  <span class="num">${formatNumber(video.likes)}</span>
+                </div>
+                <div class="video-stat">
+                  <span>💬</span>
+                  <span class="num">${formatNumber(video.comments)}</span>
+                </div>
+                <div class="video-stat">
+                  <span>🔄</span>
+                  <span class="num">${formatNumber(video.shares)}</span>
+                </div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+
+    container.appendChild(card);
+  });
+}
+
+function toggleTopic(index) {
+  const card = document.getElementById(`topic-${index}`);
+  if (card) card.classList.toggle('expanded');
+}
+
+// ==================== 定时任务 ====================
+function startCountdown() {
+  countdown = 60;
+  if (countdownTimer) clearInterval(countdownTimer);
+  countdownTimer = setInterval(() => {
+    countdown--;
+    if (countdown <= 0) {
+      countdown = 60;
+      autoRefresh();
+    }
+    document.getElementById('countdown').textContent = countdown + 's';
+  }, 1000);
+}
+
+function autoRefresh() {
+  if (!isMonitoring) return;
+  processData();
+}
+
+function manualRefresh() {
+  countdown = 60;
+  const btn = document.getElementById('refreshBtn');
+  btn.classList.add('spinning');
+  addLog('手动触发数据刷新...', 'warn');
+
+  processData().then(() => {
+    btn.classList.remove('spinning');
+  });
+}
+
+// ==================== 配置管理 ====================
+function saveConfig() {
+  const token = document.getElementById('apiToken').value.trim();
+  const keyword = document.getElementById('keyword').value.trim() || '台风';
+
+  if (!token) {
+    alert('请输入 API Token');
+    return;
+  }
+
+  config.apiToken = token;
+  config.keyword = keyword;
+
+  document.getElementById('configPanel').style.display = 'none';
+  addLog('配置已保存，启动监控...', 'success');
+
+  isMonitoring = true;
+  startCountdown();
+  processData();
+}
+
+// ==================== 初始化 ====================
+function init() {
+  addLog('监控系统已加载', 'success');
+  addLog('请配置 API Token 启动真实数据监控', 'info');
+  addLog('当前显示演示数据，点击"保存并启动监控"切换真实数据', 'warn');
+
+  renderData(demoData);
+  addLog('演示数据已加载：3个话题，30条视频', 'info');
+
+  startCountdown();
+}
+
+init();
+</script>
+
+</body>
+</html>
